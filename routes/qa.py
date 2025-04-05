@@ -1,5 +1,6 @@
 import logging
 from flask import Blueprint, request, jsonify, session, current_app
+import os # Add os import
 # Note: Assuming agents will be attached to the app object in app.py
 # from agents.qa import QAAgent - Not needed here if accessed via current_app
 
@@ -33,6 +34,19 @@ def qa_endpoint():
             'details': 'No question provided in the request.'
         }), 400
 
+    # --- Determine OpenAI Key --- #
+    user_openai_key = session.get('USER_OPENAI_KEY')
+    openai_key_to_use = user_openai_key or os.getenv('OPENAI_API_KEY')
+
+    if not openai_key_to_use:
+        logger.error("OpenAI API key missing for QA (checked session and environment).")
+        return jsonify({
+            'success': False,
+            'error': 'Configuration Error',
+            'details': 'OpenAI API Key is missing.'
+        }), 503 # Service Unavailable as it cannot function
+    # -------------------------- #
+
     # Retrieve context from session
     research_data = session.get('research_data')
     evaluation_data = session.get('evaluation_data')
@@ -61,11 +75,12 @@ def qa_endpoint():
 
     current_app.logger.info(f"Received QA request: '{question}' for analyzed brand: {analyzed_brand}")
     try:
-        # Call the QA agent
+        # Call the QA agent, passing the resolved key
         qa_result = qa_agent.answer_followup(
             question=question,
             research_data=research_data,
-            evaluation_data=evaluation_data
+            evaluation_data=evaluation_data,
+            openai_api_key=openai_key_to_use
         )
 
         # Handle potential errors or successful response dictionary from QA agent

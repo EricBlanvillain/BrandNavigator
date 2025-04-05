@@ -15,6 +15,7 @@ from agents.qa import QAAgent
 # --- Import Blueprints ---
 from routes.analysis import analysis_bp
 from routes.qa import qa_bp
+from routes.settings import settings_bp # Import the new settings blueprint
 
 
 # --- Configuration & Setup ---
@@ -75,6 +76,7 @@ except Exception as e:
 # --- Register Blueprints ---
 app.register_blueprint(analysis_bp)
 app.register_blueprint(qa_bp)
+app.register_blueprint(settings_bp) # Register the settings blueprint
 
 # --- Removed Global variable for context ---
 # --- Removed Routes --- (Moved to blueprints)

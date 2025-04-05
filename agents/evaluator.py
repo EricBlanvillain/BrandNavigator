@@ -23,44 +23,32 @@ class EvaluatorAgent:
     def __init__(self, model: str = "gpt-4o"):
         """
         Initialize the Evaluator Agent.
+        (OpenAI client is no longer initialized here)
 
         Args:
             model (str): The OpenAI model to use for evaluation.
         """
-        self.client = None
-        self.model = None
+        # self.client = None # Client will be created per-request
+        self.model = model
         if not openai_available:
-             logger.error("EvaluatorAgent cannot be initialized: OpenAI library is missing.")
+             logger.error("EvaluatorAgent cannot run: OpenAI library is missing.")
+             self.model = None # Indicate agent is unusable
              return
-        try:
-            # +++ Debugging +++
-            key_check = os.getenv("OPENAI_API_KEY")
-            logger.info(f"Checking for OPENAI_API_KEY inside EvaluatorAgent.__init__: {'Exists' if key_check else 'None'}")
-            # +++++++++++++++++
+        logger.info(f"EvaluatorAgent initialized, will use model: {self.model}")
 
-            # --- Explicitly load API key ---
-            api_key = os.getenv("OPENAI_API_KEY")
-            if not api_key:
-                 logger.error("OPENAI_API_KEY not found in environment after attempting to load .env.")
-                 # Raise an error or handle appropriately - preventing client initialization
-                 raise ValueError("OPENAI_API_KEY environment variable not set.")
-
-            # Pass the key explicitly
-            self.client = OpenAI(api_key=api_key)
-            # -------------------------------
-
-            # Optional: Check if API key is valid by making a simple call
-            # self.client.models.list()
-            self.model = model
-            logger.info(f"EvaluatorAgent initialized with model: {self.model}")
-        except ValueError as ve:
-             # Handle the specific case where API key wasn't found
-             logger.error(f"Initialization failed: {ve}")
-             self.client = None # Ensure client is None
-        except Exception as e:
-            logger.exception(f"Failed to initialize OpenAI client: {e}. Ensure OPENAI_API_KEY is set and valid.")
-            self.client = None # Ensure client is None on failure
-
+    def _get_openai_client(self, api_key: str | None):
+         """Safely creates an OpenAI client with the provided key."""
+         if not openai_available:
+             logger.error("OpenAI library not available.")
+             return None
+         if not api_key:
+             logger.error("OpenAI API key was not provided.")
+             return None
+         try:
+             return OpenAI(api_key=api_key)
+         except Exception as e:
+             logger.exception(f"Failed to initialize OpenAI client with provided key: {e}")
+             return None
 
     def _construct_prompt(self, brand_name: str, research_data: dict) -> str:
         """Constructs the prompt for the LLM evaluation."""
@@ -96,41 +84,45 @@ class EvaluatorAgent:
         """
         return prompt
 
-    def evaluate(self, brand_name: str, research_data: dict) -> dict:
+    def evaluate(self, brand_name: str, research_data: dict, openai_api_key: str | None) -> dict:
         """
-        Evaluates the brand name using the configured LLM.
+        Evaluates the brand name using the configured LLM and the provided API key.
 
         Args:
             brand_name (str): The brand name to evaluate.
             research_data (dict): The consolidated data from MarketResearchAgent.
+            openai_api_key (str | None): The OpenAI API key to use (from session or env).
 
         Returns:
-            dict: A dictionary containing the LLM's evaluation, structured as requested in the prompt,
-                  or an error dictionary.
+            dict: A dictionary containing the LLM's evaluation or an error dictionary.
         """
         logger.info(f"Starting evaluation for brand name: '{brand_name}'")
 
-        if not self.client:
-             logger.error("OpenAI client not initialized. Cannot perform evaluation.")
-             return {"error": "EvaluatorAgent not properly initialized (OpenAI client missing or invalid API key)."}
+        if not self.model:
+             return {"error": "EvaluatorAgent not properly initialized (OpenAI library missing)."}
+
+        client = self._get_openai_client(openai_api_key)
+        if not client:
+             # Error already logged by _get_openai_client
+             return {"error": "Failed to create OpenAI client (check API key)."}
 
         if not research_data:
-            logger.warning(f"No research data provided for evaluating '{brand_name}'. Cannot perform evaluation.")
+            logger.warning(f"No research data provided for evaluating '{brand_name}'.")
             return {"error": "Missing research data for evaluation."}
 
         prompt = self._construct_prompt(brand_name, research_data)
-        logger.debug(f"Constructed prompt for {brand_name}") # Avoid logging full prompt in production
+        logger.debug(f"Constructed prompt for {brand_name}")
 
         try:
             logger.info(f"Sending request to OpenAI model: {self.model}")
-            response = self.client.chat.completions.create(
+            response = client.chat.completions.create( # Use the client created with the passed key
                 model=self.model,
                 messages=[
                     {"role": "system", "content": "You are an AI assistant specialized in brand name evaluation. Provide analysis strictly in the requested JSON format."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.4, # Lower temperature for more focused, less creative output
-                response_format={ "type": "json_object" } # Request JSON output
+                temperature=0.4,
+                response_format={ "type": "json_object" }
             )
 
             llm_output_raw = response.choices[0].message.content
@@ -140,17 +132,13 @@ class EvaluatorAgent:
             try:
                 evaluation_result = json.loads(llm_output_raw)
                 expected_keys = ["linguistic_analysis", "memorability_distinctiveness", "relevance", "availability_summary", "overall_score"]
-                # Stricter validation: Ensure *only* expected keys exist
                 if all(key in evaluation_result for key in expected_keys) and len(evaluation_result) == len(expected_keys):
                     logger.info(f"Successfully parsed evaluation for '{brand_name}'.")
-                    # Ensure score is an integer
                     try:
                         evaluation_result['overall_score'] = int(evaluation_result['overall_score'])
                     except (ValueError, TypeError):
                         logger.warning(f"Could not parse 'overall_score' as integer for {brand_name}. Value: {evaluation_result.get('overall_score')}")
-                        # Decide how to handle: return error, set default, or leave as is? Returning error for now.
                         return {"error": "LLM response format error (invalid overall_score type).", "raw_response": llm_output_raw}
-
                     return evaluation_result
                 else:
                     logger.error(f"LLM response for '{brand_name}' has incorrect keys. Expected: {expected_keys}, Got: {list(evaluation_result.keys())}. Raw: {llm_output_raw}")
@@ -165,7 +153,6 @@ class EvaluatorAgent:
             return {"error": f"OpenAI rate limit exceeded: {rle}"}
         except APIError as apie:
             logger.error(f"OpenAI API error during evaluation for '{brand_name}': {apie}")
-            # Handle specific API errors if needed (e.g., invalid request, auth error)
             return {"error": f"OpenAI API error: {apie}"}
         except Exception as e:
             logger.exception(f"An unexpected error occurred during evaluation for '{brand_name}': {e}")
@@ -178,8 +165,8 @@ if __name__ == '__main__':
         print("OpenAI library not installed. Skipping EvaluatorAgent tests.")
     else:
         evaluator = EvaluatorAgent(model="gpt-4o")
-        if not evaluator.client:
-            print("OpenAI client failed to initialize. Please check your API key and network connection.")
+        if not evaluator.model:
+            print("OpenAI library failed to initialize. Please check your environment and network connection.")
         else:
             # Dummy data for InnovateNow (likely conflicts)
             dummy_research_innovatenow = {
@@ -230,7 +217,7 @@ if __name__ == '__main__':
             }
 
             print(f"--- Evaluating Brand: {dummy_research_innovatenow['brand_name']} ---")
-            evaluation_results = evaluator.evaluate(dummy_research_innovatenow['brand_name'], dummy_research_innovatenow)
+            evaluation_results = evaluator.evaluate(dummy_research_innovatenow['brand_name'], dummy_research_innovatenow, os.getenv("OPENAI_API_KEY"))
             print("\n--- Evaluation Results (InnovateNow) ---")
             print(json.dumps(evaluation_results, indent=2))
 
@@ -275,6 +262,6 @@ if __name__ == '__main__':
               "error": None
             }
             print(f"\n--- Evaluating Brand: {dummy_research_zyxosphere['brand_name']} ---")
-            evaluation_results_2 = evaluator.evaluate(dummy_research_zyxosphere['brand_name'], dummy_research_zyxosphere)
+            evaluation_results_2 = evaluator.evaluate(dummy_research_zyxosphere['brand_name'], dummy_research_zyxosphere, os.getenv("OPENAI_API_KEY"))
             print("\n--- Evaluation Results (ZyxoSphere) ---")
             print(json.dumps(evaluation_results_2, indent=2))

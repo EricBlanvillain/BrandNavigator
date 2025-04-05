@@ -28,22 +28,23 @@ class MarketResearchAgent:
     def __init__(self):
         """
         Initialize the Market Research Agent.
-        Load Brave API Key.
+        (API key is no longer loaded here)
         """
         logger.info("Initializing MarketResearchAgent...")
-        self.brave_api_key = os.getenv('BRAVE_API_KEY')
-        if not self.brave_api_key:
-            logger.error("BRAVE_API_KEY not found in environment variables. Live web/social/trademark searches will fail.")
-        self.brave_api_base_url = "https://api.search.brave.com/res/v1/web/search" # Use Web Search endpoint
+        # self.brave_api_key = os.getenv('BRAVE_API_KEY') # Removed
+        # if not self.brave_api_key:
+        #     logger.error("BRAVE_API_KEY not found in environment variables...")
+        self.brave_api_base_url = "https://api.search.brave.com/res/v1/web/search"
         logger.info("MarketResearchAgent initialized.")
 
-    def _make_brave_request(self, query: str, count: int = 10) -> dict:
-        """ Helper function to make requests to the Brave Search API."""
-        if not self.brave_api_key:
+    def _make_brave_request(self, query: str, brave_api_key: str | None, count: int = 10) -> dict:
+        """ Helper function to make requests to the Brave Search API, using the provided key."""
+        if not brave_api_key:
+            logger.error("Brave API Key was not provided to _make_brave_request.")
             return {"error": "Brave API Key is missing."}
 
         headers = {
-            "X-Subscription-Token": self.brave_api_key, # Correct header name
+            "X-Subscription-Token": brave_api_key, # Use passed key
             "Accept": "application/json"
         }
         params = {
@@ -74,11 +75,9 @@ class MarketResearchAgent:
              logger.exception(f"Unexpected error during Brave API call for query '{query}': {e}")
              return {"error": f"Unexpected error calling Brave API: {str(e)}"}
 
-    def search_web(self, brand_name: str) -> dict:
+    def search_web(self, brand_name: str, brave_api_key: str | None) -> dict:
         """
-        Searches the general web for occurrences of the brand name using Brave Search API.
-        Args: brand_name
-        Returns: dict summarizing findings.
+        Searches the general web using Brave Search API with the provided key.
         """
         logger.info(f"Starting web search for: {brand_name}")
         results = {
@@ -90,8 +89,8 @@ class MarketResearchAgent:
         query = f'"{brand_name}" brand OR company OR official website'
         results['query_used'] = query
 
-        # Make the API call using the helper
-        search_api_results = self._make_brave_request(query=query, count=10)
+        # Make the API call using the helper and PASSED key
+        search_api_results = self._make_brave_request(query=query, brave_api_key=brave_api_key, count=10)
 
         # Check for errors from the API call itself
         if isinstance(search_api_results, dict) and search_api_results.get('error'):
@@ -148,9 +147,9 @@ class MarketResearchAgent:
 
         return results
 
-    def search_social_media(self, brand_name: str) -> dict:
+    def search_social_media(self, brand_name: str, brave_api_key: str | None) -> dict:
         """
-        Searches social media platforms using targeted Brave web search.
+        Searches social media platforms using targeted Brave web search with the provided key.
         """
         logger.info(f"Starting social media presence check for: {brand_name}")
         results = {
@@ -177,8 +176,8 @@ class MarketResearchAgent:
             time.sleep(0.8) # Pause for 0.8 seconds before the next API call
             # ----------------------------------------
 
-            # Make the API call
-            search_api_results = self._make_brave_request(query=query, count=3)
+            # Make the API call with PASSED key
+            search_api_results = self._make_brave_request(query=query, brave_api_key=brave_api_key, count=3)
 
             # Check for API call errors
             if isinstance(search_api_results, dict) and search_api_results.get('error'):
@@ -214,9 +213,9 @@ class MarketResearchAgent:
         logger.info(f"Completed social media presence check for: {brand_name}")
         return results
 
-    def check_trademarks(self, brand_name: str, country_code: str = 'US') -> dict:
+    def check_trademarks(self, brand_name: str, brave_api_key: str | None, country_code: str = 'US') -> dict:
         """
-        Performs a basic trademark check using Brave web search.
+        Performs a basic trademark check using Brave web search with the provided key.
         """
         logger.info(f"Starting basic trademark check for: {brand_name} in country: {country_code}")
         results = {
@@ -245,8 +244,8 @@ class MarketResearchAgent:
         time.sleep(0.8) # Pause for 0.8 seconds before the API call
         # ----------------------------------------
 
-        # Make API Call
-        search_api_results = self._make_brave_request(query=query, count=2)
+        # Make API Call with PASSED key
+        search_api_results = self._make_brave_request(query=query, brave_api_key=brave_api_key, count=2)
 
         # Check API errors
         if isinstance(search_api_results, dict) and search_api_results.get('error'):
@@ -355,19 +354,19 @@ class MarketResearchAgent:
         # Return a dict containing results and any overall error message
         return {"error": overall_error, "results": domain_statuses}
 
-    def research(self, brand_name: str) -> dict:
+    def research(self, brand_name: str, brave_api_key: str | None) -> dict:
         """
-        Conducts comprehensive market research for a given brand name.
+        Conducts comprehensive market research for a given brand name, using the provided API key.
         """
         logger.info(f"Starting comprehensive research for: {brand_name}")
-        if not brand_name or not isinstance(brand_name, str):
-             logger.error("Invalid brand name provided for research.")
+        if not brand_name: # Simplified check
              return {"error": "Invalid brand name provided."}
 
-        # Run individual checks using the updated methods
-        web_results = self.search_web(brand_name)
-        social_media_results = self.search_social_media(brand_name)
-        trademark_results = self.check_trademarks(brand_name)
+        # Run individual checks, passing the key
+        web_results = self.search_web(brand_name, brave_api_key)
+        social_media_results = self.search_social_media(brand_name, brave_api_key)
+        # Pass key to trademark check as well
+        trademark_results = self.check_trademarks(brand_name, brave_api_key)
         domain_results_dict = self.check_domain_availability(brand_name)
 
         # Consolidate results
@@ -377,7 +376,6 @@ class MarketResearchAgent:
             'social_media_search': social_media_results,
             'trademark_check': trademark_results,
             'domain_availability': domain_results_dict.get('results', {}),
-            # Consolidate errors from all steps
             'error': web_results.get('error') or social_media_results.get('error') or trademark_results.get('error') or domain_results_dict.get('error')
         }
         logger.info(f"Completed research for: {brand_name}")

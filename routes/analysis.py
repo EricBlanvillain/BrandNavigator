@@ -1,6 +1,7 @@
 import logging
 from flask import Blueprint, render_template, request, jsonify, session, current_app
 from markupsafe import Markup
+import os
 # Note: Assuming agents will be attached to the app object in app.py
 # from agents.orchestrator import OrchestratorAgent - Not needed here if accessed via current_app
 
@@ -36,11 +37,27 @@ def analyze_endpoint():
              'details': 'Core analysis agents failed to initialize. Please check server logs.'
          }), 503
 
+    # --- Determine API Keys to Use --- #
+    user_brave_key = session.get('USER_BRAVE_KEY')
+    user_openai_key = session.get('USER_OPENAI_KEY')
+
+    # Fallback to environment variables if session key is not set
+    brave_key_to_use = user_brave_key or os.getenv('BRAVE_API_KEY')
+    openai_key_to_use = user_openai_key or os.getenv('OPENAI_API_KEY')
+
+    if not brave_key_to_use:
+        logger.warning("Brave API key is missing (checked session and environment).")
+        # Allow analysis to proceed, market research agent will return an error
+    if not openai_key_to_use:
+        logger.warning("OpenAI API key is missing (checked session and environment).")
+        # Allow analysis to proceed, evaluator/QA will return errors
+    # --------------------------------- #
+
     current_app.logger.info(f"Received API request to analyze brand: {brand_name}")
     try:
         # --- 1. Call Market Researcher ---
         current_app.logger.info(f"Calling market_researcher.research for: {brand_name}")
-        research_results = orchestrator.market_researcher.research(brand_name)
+        research_results = orchestrator.market_researcher.research(brand_name, brave_key_to_use)
         # Check for critical research errors
         if not isinstance(research_results, dict) or research_results.get("error") == "Invalid base domain generated":
             error_detail = research_results.get('error', 'Invalid data format') if isinstance(research_results, dict) else 'Invalid data format'
@@ -54,17 +71,20 @@ def analyze_endpoint():
 
         # --- 2. Call Evaluator ---
         evaluation_results = None
-        if orchestrator.evaluator.client: # Check if evaluator is ready (has client)
-            current_app.logger.info(f"Calling evaluator.evaluate for: {brand_name}")
-            evaluation_results = orchestrator.evaluator.evaluate(brand_name, research_results)
-            if isinstance(evaluation_results, dict) and evaluation_results.get("error"):
-                current_app.logger.error(f"Evaluation agent returned an error: {evaluation_results.get('error')}")
-                # Keep the error, don't fail the whole request yet
-            else:
-                 current_app.logger.info(f"Evaluation completed for: {brand_name}")
+        if orchestrator.evaluator: # Check if evaluator agent itself exists
+             if not openai_key_to_use:
+                 evaluation_results = {"error": "Evaluation skipped: OpenAI API Key is missing."}
+                 logger.warning(evaluation_results["error"])
+             else:
+                 current_app.logger.info(f"Calling evaluator.evaluate for: {brand_name}")
+                 evaluation_results = orchestrator.evaluator.evaluate(brand_name, research_results, openai_key_to_use)
+                 if isinstance(evaluation_results, dict) and evaluation_results.get("error"):
+                     current_app.logger.error(f"Evaluation agent returned an error: {evaluation_results.get('error')}")
+                 else:
+                     current_app.logger.info(f"Evaluation completed for: {brand_name}")
         else:
-            current_app.logger.warning("Evaluation skipped: Evaluator client not initialized.")
-            evaluation_results = {"error": "Evaluation skipped: Agent not initialized"}
+             logger.warning("Evaluation skipped: Evaluator agent not initialized.")
+             evaluation_results = {"error": "Evaluation skipped: Agent not initialized"}
 
         # --- 3. Generate Report ---
         markdown_report = ""
