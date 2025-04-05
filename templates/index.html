@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
+    <!-- Add Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
     <!-- Add Marked.js for Markdown rendering -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
@@ -141,6 +144,49 @@
 
         .loading-spinner { width: 3rem; height: 3rem; }
         .footer { background-color: transparent; text-align: center; padding: 2rem 0; margin-top: 3rem; color: #777; }
+
+        #domain-list li { margin-right: 10px; margin-bottom: 10px; }
+        #domain-list .badge { font-size: 0.9em; padding: 0.4em 0.7em; }
+        .status-potentially_available { background-color: #198754; } /* Green */
+        .status-not_available { background-color: #dc3545; } /* Red */
+        .status-used_mentioned { background-color: #fd7e14; } /* Orange */
+        .status-potentially_available_low_presence { background-color: #ffc107; color: #000; } /* Yellow */
+        .status-error { background-color: #6c757d; } /* Grey */
+        .status-no_exact_match_found_on_site { background-color: #0dcaf0; color: #000;} /* Cyan */
+
+        .report-content section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid #eee;
+        }
+        .report-content section:last-of-type {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+         .report-content h3 {
+             display: flex;
+             align-items: center;
+             gap: 0.5rem;
+             font-size: 1.25rem;
+             margin-bottom: 1rem;
+             color: #343a40;
+         }
+         .report-content h4 {
+             font-size: 1rem;
+             font-weight: 600;
+             margin-bottom: 0.75rem;
+             color: #495057;
+         }
+         code {
+            font-size: 0.85em;
+            background-color: #e9ecef;
+            padding: 0.2em 0.4em;
+            border-radius: 3px;
+         }
+         #social-media-table th {
+             width: 30%;
+         }
     </style>
 </head>
 <body>
@@ -182,7 +228,76 @@
                 <p class="mt-3 text-muted">Analyzing with AI... this might take a few seconds.</p>
             </div>
             <!-- Report Content / Error Message -->
-            <div id="report-output" class="results-section"></div>
+            <div id="report-output" class="results-section">
+                <!-- Content will be dynamically populated here -->
+                 <h2 class="text-center mb-4" id="report-brand-name">Analysis Report: [Brand Name]</h2>
+                 <div class="report-content">
+                    <!-- Market Research Section -->
+                    <section id="market-research-section">
+                        <h3><i class="bi bi-search"></i> Market Research</h3>
+                        <div id="web-links">
+                            <h4>Web Links Found</h4>
+                            <ul class="list-group list-group-flush mb-2" id="web-links-list">
+                                <!-- Populated by JS -->
+                                <li class="list-group-item text-muted">No links found or section not analyzed.</li>
+                            </ul>
+                            <p><small>Query Used: <code id="web-query">N/A</code></small></p>
+                        </div>
+                        <div id="potential-conflicts" class="mt-3">
+                            <h4>Potential Web Conflicts</h4>
+                             <ul class="list-group list-group-flush mb-2" id="conflicts-list">
+                                <!-- Populated by JS -->
+                                <li class="list-group-item text-muted">No conflicts found or section not analyzed.</li>
+                             </ul>
+                        </div>
+                        <div id="market-research-error" class="alert alert-warning mt-3" style="display: none;"></div>
+                    </section>
+
+                    <!-- Social Media Section -->
+                    <section id="social-media-section">
+                        <h3><i class="bi bi-people"></i> Social Media Presence</h3>
+                        <table class="table table-sm table-borderless" id="social-media-table">
+                            <thead class="table-light">
+                                <tr><th>Platform</th><th>Status</th></tr>
+                            </thead>
+                            <tbody>
+                                <!-- Populated by JS -->
+                                <tr><td colspan="2" class="text-muted">No platforms checked or section not analyzed.</td></tr>
+                            </tbody>
+                        </table>
+                         <p><small>Queries Used: <span id="social-queries" class="text-muted">N/A</span></small></p>
+                        <div id="social-media-error" class="alert alert-warning mt-3" style="display: none;"></div>
+                    </section>
+
+                     <!-- Trademark Section -->
+                     <section id="trademark-section">
+                         <h3><i class="bi bi-shield-check"></i> Trademark Check (Basic)</h3>
+                         <p><strong>Status:</strong> <span id="trademark-status" class="text-muted">N/A</span></p>
+                         <div id="trademark-details" class="small text-muted">No details available.</div>
+                         <p><small>Database: <span id="trademark-db" class="text-muted">N/A</span></small><br><small>Query Used: <code id="trademark-query">N/A</code></small></p>
+                         <div id="trademark-error" class="alert alert-warning mt-3" style="display: none;"></div>
+                     </section>
+
+                     <!-- Domain Availability Section -->
+                     <section id="domain-section">
+                        <h3><i class="bi bi-globe"></i> Domain Availability</h3>
+                        <ul class="list-unstyled d-flex flex-wrap" id="domain-list">
+                            <!-- Domain statuses will be populated here -->
+                            <li class="text-muted">No domains checked or section not analyzed.</li>
+                        </ul>
+                     </section>
+
+                    <!-- Evaluation Section -->
+                    <section id="evaluation-section">
+                        <h3><i class="bi bi-lightbulb"></i> AI Evaluation Summary</h3>
+                        <div id="evaluation-summary" class="text-muted">No evaluation performed or section not analyzed.</div>
+                        <div id="evaluation-score" class="mt-3">
+                            <h4>Overall Score: <span class="badge bg-secondary fs-5" id="overall-score">N/A</span></h4>
+                        </div>
+                        <div id="evaluation-error" class="alert alert-warning mt-3" style="display: none;"></div>
+                    </section>
+                 </div>
+            </div>
 
             <!-- QA Section (Initially Hidden) -->
             <div id="qa-section" class="mt-4" style="display: none;">
@@ -201,6 +316,16 @@
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
+
+                <!-- Example Questions -->
+                <div id="example-questions" class="mt-3">
+                    <p class="text-muted small mb-1">Or try an example question:</p>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-1" data-question="What does the overall score mean?">What does the score mean?</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-1" data-question="Elaborate on the linguistic analysis.">Explain linguistics</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-1" data-question="Which social media platforms showed conflicts?">Social media conflicts?</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-1" data-question="Suggest 3 alternative names based on this report.">Suggest alternatives</button>
+                </div>
+
                 <!-- QA Response Area -->
                 <div id="qa-response-area" class="mt-3"></div>
             </div>
@@ -246,12 +371,32 @@
         const reportOutput = document.getElementById('report-output');
         const brandNameInput = document.getElementById('brand_name_input');
 
+        // Get references to new report sections
+        const reportBrandNameEl = document.getElementById('report-brand-name');
+        const webLinksListEl = document.getElementById('web-links-list');
+        const webQueryEl = document.getElementById('web-query');
+        const conflictsListEl = document.getElementById('conflicts-list');
+        const marketResearchErrorEl = document.getElementById('market-research-error');
+        const socialMediaTableBodyEl = document.getElementById('social-media-table').querySelector('tbody');
+        const socialQueriesEl = document.getElementById('social-queries');
+        const socialMediaErrorEl = document.getElementById('social-media-error');
+        const trademarkStatusEl = document.getElementById('trademark-status');
+        const trademarkDetailsEl = document.getElementById('trademark-details');
+        const trademarkDbEl = document.getElementById('trademark-db');
+        const trademarkQueryEl = document.getElementById('trademark-query');
+        const trademarkErrorEl = document.getElementById('trademark-error');
+        const domainListEl = document.getElementById('domain-list');
+        const evaluationSummaryEl = document.getElementById('evaluation-summary');
+        const overallScoreEl = document.getElementById('overall-score');
+        const evaluationErrorEl = document.getElementById('evaluation-error');
+
         // QA Elements
         const qaSection = document.getElementById('qa-section');
         const qaForm = document.getElementById('qa-form');
         const qaQuestionInput = document.getElementById('qa_question_input');
         const qaLoadingIndicator = document.getElementById('qa-loading-indicator');
         const qaResponseArea = document.getElementById('qa-response-area');
+        const exampleQuestionsContainer = document.getElementById('example-questions'); // Get the container
 
         // Analyze Form Submission
         analyzeForm.addEventListener('submit', async (event) => {
@@ -279,26 +424,81 @@
                 });
                 const data = await response.json();
 
+                // ---- DEBUG: Log the received data structure ----
+                console.log("Received data:", JSON.stringify(data, null, 2));
+                // ------------------------------------------------
+
                 loadingIndicator.style.display = 'none';
                 reportOutput.style.display = 'block';
 
-                if (response.ok && data.success && data.report_markdown) {
-                    // Use Marked.js to convert Markdown to HTML
-                    const reportHtml = marked.parse(data.report_markdown);
-                    reportOutput.innerHTML = `<h2 class="text-center mb-4">Analysis Report: ${escapeHTML(brandName)}</h2><div class="report-content">${reportHtml}</div>`;
+                if (response.ok && data.success) {
+                    // ---- NEW: Populate structured HTML ----
+                    reportBrandNameEl.textContent = `Analysis Report: ${escapeHTML(brandName)}`;
+
+                    // --- Populate Market Research ---
+                    if (data.research_data && data.research_data['web_search']) {
+                        const webSearch = data.research_data['web_search'];
+                        populateWebLinks(webSearch['web_links']);
+                        populateConflicts(webSearch['potential_conflicts']);
+                        webQueryEl.textContent = webSearch['query_used'] || 'N/A';
+                        displaySectionError(marketResearchErrorEl, webSearch['error']);
+                    } else {
+                        clearMarketResearch();
+                    }
+
+                    // --- Populate Social Media ---
+                    if (data.research_data && data.research_data['social_media_search']) {
+                        const socialMedia = data.research_data['social_media_search'];
+                        populateSocialMedia(socialMedia['platform_results']);
+                        populateSocialQueries(socialMedia['queries_used']);
+                        displaySectionError(socialMediaErrorEl, socialMedia['error']);
+                    } else {
+                        clearSocialMedia();
+                    }
+
+                     // --- Populate Trademark Check ---
+                    if (data.research_data && data.research_data['trademark_check']) {
+                         const trademark = data.research_data['trademark_check'];
+                         trademarkStatusEl.innerHTML = formatStatusBadge(trademark['status']);
+                         trademarkDetailsEl.innerHTML = trademark['details'] ? formatTrademarkDetails(trademark['details']) : 'No details provided.';
+                         trademarkDbEl.textContent = trademark['database_checked'] || 'N/A';
+                         trademarkQueryEl.textContent = trademark['query_used'] || 'N/A';
+                         displaySectionError(trademarkErrorEl, trademark['error']);
+                    } else {
+                         clearTrademark();
+                    }
+
+                    // --- Populate Domain Availability ---
+                    if (data.research_data && data.research_data['domain_availability']) {
+                        populateDomains(data.research_data['domain_availability']);
+                    } else {
+                         clearDomains();
+                    }
+
+                    // --- Populate Evaluation ---
+                    if (data.evaluation_data) {
+                        populateEvaluation(data.evaluation_data);
+                    } else {
+                        clearEvaluation();
+                    }
+                    // ----------------------------------------
+
                     qaSection.style.display = 'block'; // Show QA section on success
                 } else {
-                    // Use the structured error fields
+                    // General Error Display
                     const errorTitle = data.error || `Request Failed (${response.status})`;
                     const errorDetails = data.details || 'No further details available.';
                     showError(`<strong>${escapeHTML(errorTitle)}:</strong> ${escapeHTML(errorDetails)}`, reportOutput);
                     qaSection.style.display = 'none'; // Hide QA on error
+                    clearAllReportSections(); // Clear specific sections on main error
                 }
             } catch (error) {
                 console.error('Analyze fetch error:', error);
                 loadingIndicator.style.display = 'none';
+                reportOutput.style.display = 'block'; // Show report area to display error
                 showError('Could not connect to the analysis service. Please try again later.', reportOutput);
                 qaSection.style.display = 'none'; // Hide QA on error
+                clearAllReportSections(); // Clear specific sections on main error
             }
         });
 
@@ -307,7 +507,7 @@
             event.preventDefault();
             const question = qaQuestionInput.value.trim();
             if (!question) {
-                appendQaResponse('<div class="alert alert-sm alert-warning">Please enter a question.</div>');
+                appendQaResponse({ type: 'error', message: 'Please enter a question.' });
                 return;
             }
 
@@ -321,30 +521,22 @@
                  const response = await fetch('/qa', {
                     method: 'POST',
                     headers: {
-                        // Optional: Explicitly set header, though fetch often does this with URLSearchParams
-                        // 'Content-Type': 'application/x-www-form-urlencoded',
+                        // 'Content-Type': 'application/x-www-form-urlencoded', // Usually not needed with URLSearchParams
                     },
                     body: body // Pass the URLSearchParams object
                  });
                  const data = await response.json();
 
-                 if (response.ok && data.answer) {
-                     appendQaResponse(`
-                        <div class="card bg-light mb-3">
-                            <div class="card-body">
-                                <p class="card-text text-muted small"><strong>You asked:</strong> ${escapeHTML(question)}</p>
-                                <p class="card-text"><strong>AI Answer:</strong> ${escapeHTML(data.answer)}</p>
-                            </div>
-                        </div>
-                     `);
+                 if (response.ok && data.success && data.answer) { // Check success flag
+                     appendQaResponse({ type: 'qa', question: question, answer: data.answer });
                  } else {
-                     const errorMessage = data.error || `Request failed with status ${response.status}.`;
-                     appendQaResponse(`<div class="alert alert-sm alert-danger"><strong>Error asking question:</strong> ${escapeHTML(errorMessage)}</div>`);
+                     const errorMessage = data.details || data.error || `Request failed with status ${response.status}.`;
+                     appendQaResponse({ type: 'error', message: errorMessage });
                  }
 
             } catch (error) {
                 console.error('QA fetch error:', error);
-                appendQaResponse('<div class="alert alert-sm alert-danger"><strong>Error:</strong> Could not connect to the QA service.</div>');
+                appendQaResponse({ type: 'error', message: 'Could not connect to the QA service.' });
             } finally {
                 qaLoadingIndicator.style.display = 'none'; // Hide QA loading
                 qaForm.elements['question'].disabled = false; // Re-enable input
@@ -353,16 +545,227 @@
             }
         });
 
-        // Helper to display error messages
+        // --- NEW: Example Question Click Handler ---
+        exampleQuestionsContainer.addEventListener('click', (event) => {
+            // Check if a button inside the container was clicked
+            if (event.target.tagName === 'BUTTON' && event.target.hasAttribute('data-question')) {
+                const question = event.target.getAttribute('data-question');
+                qaQuestionInput.value = question; // Set the input value
+                // Trigger the form submission programmatically
+                qaForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+            }
+        });
+        // -------------------------------------------
+
+        // ---- NEW Helper Functions for Populating Sections ----
+
+        function populateWebLinks(links) {
+            webLinksListEl.innerHTML = ''; // Clear placeholder
+            if (links && links.length > 0) {
+                links.forEach(link => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.innerHTML = `<a href="${escapeHTML(link.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(link.title)}</a> <small class="text-muted d-block">${escapeHTML(link.snippet)}</small>`;
+                    webLinksListEl.appendChild(li);
+                });
+            } else {
+                webLinksListEl.innerHTML = '<li class="list-group-item text-muted">No relevant web links found.</li>';
+            }
+        }
+
+        function populateConflicts(conflicts) {
+            conflictsListEl.innerHTML = ''; // Clear placeholder
+            if (conflicts && conflicts.length > 0) {
+                conflicts.forEach(conflict => {
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item';
+                    li.innerHTML = `<a href="${escapeHTML(conflict.url)}" target="_blank" rel="noopener noreferrer">${escapeHTML(conflict.title)}</a> <small class="text-muted d-block">Reason: ${escapeHTML(conflict.reason)}</small>`;
+                    conflictsListEl.appendChild(li);
+                });
+            } else {
+                conflictsListEl.innerHTML = '<li class="list-group-item text-success">No direct conflicts found in checked links.</li>';
+            }
+        }
+
+        function populateSocialMedia(results) {
+            socialMediaTableBodyEl.innerHTML = ''; // Clear placeholder
+            if (results && Object.keys(results).length > 0) {
+                Object.entries(results).forEach(([platform, status]) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${escapeHTML(platform)}</td><td>${formatStatusBadge(status)}</td>`;
+                    socialMediaTableBodyEl.appendChild(tr);
+                });
+            } else {
+                 socialMediaTableBodyEl.innerHTML = '<tr><td colspan="2" class="text-muted">No social media platforms checked.</td></tr>';
+            }
+        }
+
+        function populateSocialQueries(queries) {
+            socialQueriesEl.innerHTML = ''; // Clear placeholder
+            if (queries && queries.length > 0) {
+                queries.forEach((q, index) => {
+                     socialQueriesEl.innerHTML += `<code>${escapeHTML(q.query)}</code> (${escapeHTML(q.platform)})${index < queries.length - 1 ? ', ' : ''}`;
+                });
+            } else {
+                socialQueriesEl.textContent = 'N/A';
+            }
+        }
+
+         function populateDomains(domains) {
+             domainListEl.innerHTML = ''; // Clear placeholder
+             if (domains && Object.keys(domains).length > 0) {
+                Object.entries(domains).forEach(([domain, status]) => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `<span class="badge me-1 status-${escapeHTML(status.toLowerCase())}">${formatStatusText(status)}</span> ${escapeHTML(domain)}`;
+                    domainListEl.appendChild(li);
+                });
+             } else {
+                 domainListEl.innerHTML = '<li class="text-muted">No domain checks performed.</li>';
+             }
+         }
+
+         function populateEvaluation(evaluation) {
+            if (!evaluation) {
+                 clearEvaluation();
+                 return;
+            }
+            if (evaluation.error) {
+                 displaySectionError(evaluationErrorEl, evaluation.error);
+                 evaluationSummaryEl.innerHTML = '<p class="text-danger">Evaluation could not be performed.</p>';
+                 overallScoreEl.textContent = 'N/A';
+                 overallScoreEl.className = 'badge bg-secondary fs-5';
+                 return;
+            }
+            let summaryMd = '';
+            if(evaluation.linguistic_analysis) summaryMd += `**Linguistic Analysis:** ${evaluation.linguistic_analysis}\n\n`;
+            if(evaluation.memorability_distinctiveness) summaryMd += `**Memorability & Distinctiveness:** ${evaluation.memorability_distinctiveness}\n\n`;
+            if(evaluation.relevance) summaryMd += `**Relevance:** ${evaluation.relevance}\n\n`;
+            if(evaluation.availability_summary) summaryMd += `**Availability Summary:** ${evaluation.availability_summary}`;
+
+            evaluationSummaryEl.innerHTML = marked.parse(summaryMd || 'No detailed evaluation provided.');
+            const score = evaluation['overall_score'] ?? 'N/A';
+            overallScoreEl.textContent = score;
+            overallScoreEl.className = `badge fs-5 ${getScoreBadgeClass(score)}`;
+            displaySectionError(evaluationErrorEl, null);
+         }
+
+         function formatStatusBadge(status) {
+             if (!status) return '<span class="badge bg-secondary">Unknown</span>';
+             const statusClass = `status-${escapeHTML(status.toLowerCase())}`;
+             return `<span class="badge ${statusClass}">${formatStatusText(status)}</span>`;
+         }
+
+         function formatStatusText(status) {
+             if (!status) return 'Unknown';
+             return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()); // Capitalize words
+         }
+
+        function formatTrademarkDetails(details) {
+             if (Array.isArray(details)) {
+                 return details.map(d => `<p class="mb-1">${escapeHTML(d)}</p>`).join('');
+             } else {
+                 return `<p class="mb-1">${escapeHTML(details)}</p>`;
+             }
+        }
+
+         function getScoreBadgeClass(score) {
+             const numScore = parseInt(score, 10);
+             if (isNaN(numScore)) return 'bg-secondary';
+             if (numScore >= 8) return 'bg-success';
+             if (numScore >= 5) return 'bg-warning text-dark';
+             return 'bg-danger';
+         }
+
+         function displaySectionError(element, errorMsg) {
+             if (errorMsg) {
+                 element.textContent = `Error: ${escapeHTML(errorMsg)}`;
+                 element.style.display = 'block';
+             } else {
+                 element.style.display = 'none';
+                 element.textContent = '';
+             }
+         }
+
+         function clearMarketResearch() {
+             webLinksListEl.innerHTML = '<li class="list-group-item text-muted">Section Cleared</li>';
+             conflictsListEl.innerHTML = '<li class="list-group-item text-muted">Section Cleared</li>';
+             webQueryEl.textContent = 'N/A';
+             marketResearchErrorEl.style.display = 'none';
+         }
+         function clearSocialMedia() {
+             socialMediaTableBodyEl.innerHTML = '<tr><td colspan="2" class="text-muted">Section Cleared</td></tr>';
+             socialQueriesEl.textContent = 'N/A';
+             socialMediaErrorEl.style.display = 'none';
+         }
+          function clearTrademark() {
+              trademarkStatusEl.innerHTML = formatStatusBadge('');
+              trademarkDetailsEl.innerHTML = 'Section Cleared';
+              trademarkDbEl.textContent = 'N/A';
+              trademarkQueryEl.textContent = 'N/A';
+              trademarkErrorEl.style.display = 'none';
+          }
+          function clearDomains() {
+              domainListEl.innerHTML = '<li class="text-muted">Section Cleared</li>';
+          }
+          function clearEvaluation() {
+              evaluationSummaryEl.innerHTML = '<p class="text-muted">Section Cleared</p>';
+              overallScoreEl.textContent = 'N/A';
+              overallScoreEl.className = 'badge bg-secondary fs-5';
+              evaluationErrorEl.style.display = 'none';
+          }
+         function clearAllReportSections() {
+             clearMarketResearch();
+             clearSocialMedia();
+             clearTrademark();
+             clearDomains();
+             clearEvaluation();
+             reportBrandNameEl.textContent = 'Analysis Report:';
+         }
+
+        // Helper to display error messages (can be potentially removed if handled by appendQaResponse)
         function showError(message, element) {
-            element.innerHTML = `<div class="alert alert-danger">${escapeHTML(message)}</div>`;
+            element.innerHTML = `<div class="alert alert-danger">${message}</div>`; // Allow HTML in message for structured errors
             element.style.display = 'block';
         }
 
-        // Helper to append QA responses
-        function appendQaResponse(htmlContent) {
-             // Add new response to the top for visibility
-             qaResponseArea.insertAdjacentHTML('afterbegin', htmlContent);
+        // UPDATED Helper to append QA responses or errors
+        function appendQaResponse(data) {
+            let htmlContent = '';
+            if (data.type === 'qa' && data.question && data.answer) {
+                // Display Q&A using a Bootstrap card
+                // Add icons and render markdown for the AI answer
+                htmlContent = `
+                    <div class="card bg-light shadow-sm mb-3">
+                        <div class="card-body">
+                            <p class="card-text text-muted small mb-1">
+                                <i class="bi bi-person me-2"></i><strong>You asked:</strong>
+                            </p>
+                            <p class="card-text ms-3 mb-3">${escapeHTML(data.question)}</p>
+                            <p class="card-text text-primary small mb-1">
+                                <i class="bi bi-robot me-2"></i><strong>AI Answer:</strong>
+                            </p>
+                            <div class="card-text ms-3">${marked.parse(data.answer)}</div>
+                        </div>
+                    </div>
+                `;
+            } else if (data.type === 'error' && data.message) {
+                // Display errors using a Bootstrap alert
+                htmlContent = `<div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                   <strong>Error:</strong> ${escapeHTML(data.message)}
+                                   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                               </div>`;
+            } else if (data.type === 'warning' && data.message) {
+                 // Optional: Add a warning type
+                 htmlContent = `<div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                   ${escapeHTML(data.message)}
+                                   <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                               </div>`;
+            }
+
+            if (htmlContent) {
+                 // Add new response/error to the top for visibility
+                 qaResponseArea.insertAdjacentHTML('afterbegin', htmlContent);
+            }
         }
 
         // Helper function to prevent basic XSS

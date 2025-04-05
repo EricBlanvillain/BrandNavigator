@@ -1,6 +1,7 @@
 import logging
 import os
 import time # Import time for potential delays/rate limiting
+import requests # Add requests import
 
 # Configure logging FIRST
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -27,90 +28,106 @@ class MarketResearchAgent:
     def __init__(self):
         """
         Initialize the Market Research Agent.
+        Load Brave API Key.
         """
-        # We might load configurations or API clients needed by other methods here
-        # For now, Brave search might be handled directly by the tool call.
+        logger.info("Initializing MarketResearchAgent...")
+        self.brave_api_key = os.getenv('BRAVE_API_KEY')
+        if not self.brave_api_key:
+            logger.error("BRAVE_API_KEY not found in environment variables. Live web/social/trademark searches will fail.")
+        self.brave_api_base_url = "https://api.search.brave.com/res/v1/web/search" # Use Web Search endpoint
         logger.info("MarketResearchAgent initialized.")
+
+    def _make_brave_request(self, query: str, count: int = 10) -> dict:
+        """ Helper function to make requests to the Brave Search API."""
+        if not self.brave_api_key:
+            return {"error": "Brave API Key is missing."}
+
+        headers = {
+            "X-Subscription-Token": self.brave_api_key, # Correct header name
+            "Accept": "application/json"
+        }
+        params = {
+            "q": query,
+            "count": count
+        }
+        try:
+            response = requests.get(self.brave_api_base_url, headers=headers, params=params, timeout=15) # Added timeout
+            response.raise_for_status() # Raise HTTPError for bad responses (4xx or 5xx)
+            # Check if response is JSON before parsing
+            if 'application/json' in response.headers.get('Content-Type', ''):
+                 # Directly return the parsed JSON from Brave API
+                 # Brave API structure includes {"web": {"results": [...]}}
+                 return response.json()
+            else:
+                logger.error(f"Brave API returned non-JSON response for query '{query}'. Status: {response.status_code}, Content: {response.text[:200]}")
+                return {"error": f"Brave API returned non-JSON content (Status: {response.status_code})"}
+
+        except requests.exceptions.Timeout as e:
+            logger.error(f"Timeout occurred while calling Brave API for query '{query}': {e}")
+            return {"error": f"Timeout calling Brave API: {e}"}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error calling Brave API for query '{query}': {e}")
+            status_code = e.response.status_code if e.response else 'N/A'
+            error_text = e.response.text[:200] if e.response else 'No response body'
+            return {"error": f"Brave API request failed (Status: {status_code}): {e}. Details: {error_text}"}
+        except Exception as e:
+             logger.exception(f"Unexpected error during Brave API call for query '{query}': {e}")
+             return {"error": f"Unexpected error calling Brave API: {str(e)}"}
 
     def search_web(self, brand_name: str) -> dict:
         """
-        Searches the general web for occurrences of the brand name using Brave Search.
-
-        Args:
-            brand_name: The brand name to search for.
-
-        Returns:
-            A dictionary summarizing web search findings.
-            Example structure: {'web_links': [...], 'potential_conflicts': [...], 'query_used': '...'}
+        Searches the general web for occurrences of the brand name using Brave Search API.
+        Args: brand_name
+        Returns: dict summarizing findings.
         """
         logger.info(f"Starting web search for: {brand_name}")
         results = {
             'web_links': [],
-            'potential_conflicts': [], # Sites that might indicate existing usage/conflict
+            'potential_conflicts': [],
             'query_used': None,
             'error': None
-            # Removed 'domain_availability' as it's separate logic
         }
-
-        # Construct a query targeting potential brand usage
-        # Using quotes ensures exact match, adding 'brand' or 'company' helps filter
         query = f'"{brand_name}" brand OR company OR official website'
         results['query_used'] = query
-        logger.info(f"Using web search query: {query}")
 
+        # Make the API call using the helper
+        search_api_results = self._make_brave_request(query=query, count=10)
+
+        # Check for errors from the API call itself
+        if isinstance(search_api_results, dict) and search_api_results.get('error'):
+            results['error'] = search_api_results['error']
+            logger.error(f"Web search failed for {brand_name}: {results['error']}")
+            return results
+
+        # Process the successful results (assuming standard Brave structure)
         try:
-            # --- Get Brave Search Results ---
-            logger.info(f"Attempting to get web search results for query: {query}...")
-
-            # ***** TOOL CALL SIMULATION FOR LOCAL TESTING *****
-            # In a real application environment integrated with the AI, the actual tool call
-            # (e.g., mcp_Brave_Search_brave_web_search(query=query, count=10))
-            # would be executed here by the environment, and its result assigned to search_api_results.
-            # Since we're running this script directly, we simulate the result structure.
-            search_api_results = {
-                "web": {
-                    "results": [
-                        {"title": f"{brand_name} Official Website", "url": f"https://{brand_name.lower()}.com", "description": f"The official site for {brand_name}."},
-                        {"title": f"About {brand_name} - Company Info", "url": f"https://somecorp.com/{brand_name.lower()}", "description": f"Learn about the {brand_name} initiative."},
-                        {"title": f"{brand_name} News", "url": f"https://news.example.com/search?q={brand_name.lower()}", "description": f"Latest news articles mentioning {brand_name}."},
-                        {"title": "Generic Business Site", "url": "https://genericbiz.com", "description": "A site not related to the brand."}
-                    ]
-                }
-            }
-            logger.info("Using SIMULATED search results for local testing.")
-            # *****************************************************
-
-            # --- Process API Results (Simulated or Real) ---
-            # The logic below processes the 'search_api_results' variable,
-            # whether it contains real data (in prod) or simulated data (local test).
-
-            if search_api_results and isinstance(search_api_results, dict) and search_api_results.get('web') and isinstance(search_api_results['web'].get('results'), list):
+            if isinstance(search_api_results, dict) and search_api_results.get('web') and isinstance(search_api_results['web'].get('results'), list):
                 processed_urls = set()
                 api_results_list = search_api_results['web']['results']
-
-                logger.info(f"Processing {len(api_results_list)} web results.")
+                logger.info(f"Processing {len(api_results_list)} web results from API.")
 
                 for item in api_results_list:
                     link = item.get('url')
                     title = item.get('title')
-                    snippet = item.get('description')
+                    snippet = item.get('description') # Brave uses 'description'
 
                     if link and link not in processed_urls:
                         processed_urls.add(link)
                         results['web_links'].append({'url': link, 'title': title, 'snippet': snippet})
 
+                        # Simplified conflict check (as before)
                         try:
                             title_lower = str(title).lower() if title else ""
-                            domain = link.split('/')[2].replace('www.', '')
+                            domain = ""
+                            if link:
+                                parts = link.split('/')
+                                if len(parts) > 2:
+                                    domain = parts[2].replace('www.', '')
                             domain_lower = domain.lower()
-                        except IndexError:
-                            domain = ""
-                            domain_lower = ""
-                            logger.warning(f"Could not parse domain from URL: {link}")
                         except Exception as parse_err:
-                            domain = ""
-                            domain_lower = ""
-                            logger.warning(f"Error parsing title/domain for URL {link}: {parse_err}")
+                             logger.warning(f"Error parsing title/domain for URL {link}: {parse_err}")
+                             title_lower = ""
+                             domain_lower = ""
 
                         brand_lower = brand_name.lower()
                         if (brand_lower in title_lower) or (brand_lower in domain_lower):
@@ -119,31 +136,21 @@ class MarketResearchAgent:
                                 'title': title,
                                 'reason': 'Brand name found in title or domain'
                             })
-
-                if not results['web_links']:
-                     logger.warning(f"No web results processed successfully for query: {query}")
-
             else:
-                logger.warning(f"No results or unexpected format in search data for query: {query}. Data: {search_api_results}")
-                results['error'] = "No valid search results found or unexpected format."
+                logger.warning(f"No results or unexpected format in Brave API response for {brand_name}. Data: {search_api_results}")
+                # Not necessarily an error if Brave found nothing, but could be format issue
+                if not results['web_links']:
+                     logger.info(f"Brave API returned no web results for query: {query}")
 
         except Exception as e:
-            logger.exception(f"Error during web search processing for '{brand_name}': {e}")
-            results['error'] = f"An exception occurred during web search processing: {str(e)}"
+            logger.exception(f"Error processing Brave web search results for '{brand_name}': {e}")
+            results['error'] = f"An exception occurred during web search result processing: {str(e)}"
 
         return results
 
     def search_social_media(self, brand_name: str) -> dict:
         """
-        Searches major social media platforms for brand name usage using targeted web search.
-        Note: This method checks for indexed presence (profiles, mentions), not definitive handle availability.
-
-        Args:
-            brand_name: The brand name to search for.
-
-        Returns:
-            A dictionary summarizing social media findings.
-            Example structure: {'platform_results': {'twitter': 'used/mentioned', 'instagram': 'potentially_available', ...}}
+        Searches social media platforms using targeted Brave web search.
         """
         logger.info(f"Starting social media presence check for: {brand_name}")
         results = {
@@ -151,140 +158,108 @@ class MarketResearchAgent:
             'queries_used': [],
             'error': None
         }
-
-        # Define platforms and their search query patterns
-        # Using quotes around brand_name for better matching
         platforms_to_check = {
             'Twitter': f'site:twitter.com "{brand_name}"',
             'Instagram': f'site:instagram.com "{brand_name}"',
             'Facebook': f'site:facebook.com "{brand_name}"',
             'LinkedIn (Company)': f'site:linkedin.com/company/ "{brand_name}"',
-            # Add more platforms as needed (e.g., TikTok, Pinterest, YouTube channel)
-            'LinkedIn (General)': f'site:linkedin.com "{brand_name}" -site:linkedin.com/company/' # Check general mentions excluding company pages
+            'LinkedIn (General)': f'site:linkedin.com "{brand_name}" -site:linkedin.com/company/'
         }
-
-        # Normalize brand name for potential URL checks later (optional)
-        brand_lower = brand_name.lower()
+        overall_error = None
 
         for platform, query in platforms_to_check.items():
             logger.info(f"Checking {platform} with query: {query}")
             results['queries_used'].append({'platform': platform, 'query': query})
-            platform_status = "potentially_available_low_presence" # Default status
+            platform_status = "potentially_available_low_presence"
+            error_msg = None
 
-            try:
-                # ***** TOOL CALL SIMULATION FOR LOCAL TESTING *****
-                # Simulate calling the Brave Search tool for this platform-specific query
-                # search_api_results = mcp_Brave_Search_brave_web_search(query=query, count=3) # Check top 3 results
+            # --- Add delay to avoid rate limiting ---
+            time.sleep(0.8) # Pause for 0.8 seconds before the next API call
+            # ----------------------------------------
 
-                # Simulate response structure: Return some results for Twitter & Facebook, none for others
-                if platform == 'Twitter':
-                     simulated_platform_results = {
-                         "web": { "results": [{"title": f"{brand_name} (@{brand_lower}) / Twitter", "url": f"https://twitter.com/{brand_lower}", "description": "..."}] }
-                     }
-                elif platform == 'Facebook':
-                     simulated_platform_results = {
-                         "web": { "results": [{"title": f"{brand_name} Page", "url": f"https://facebook.com/{brand_lower}_page", "description": "..."}] }
-                     }
-                else: # Simulate no results for others
-                    simulated_platform_results = {"web": {"results": []}}
+            # Make the API call
+            search_api_results = self._make_brave_request(query=query, count=3)
 
-                logger.info(f"Using SIMULATED search results for {platform}.")
-                search_api_results = simulated_platform_results
-                # *****************************************************
-
-                # Process results: Check if any relevant results were found
-                if search_api_results and search_api_results.get('web') and search_api_results['web'].get('results'):
-                    # Basic check: if any result is returned by the site-specific search, assume usage/presence.
-                    for item in search_api_results['web']['results']:
-                        item_title = item.get('title', '').lower()
-                        item_url = item.get('url', '').lower()
-                        # A simple check is often enough given the targeted query
-                        if brand_lower in item_title or f"/{brand_lower}" in item_url:
-                             platform_status = "used_mentioned"
-                             logger.info(f"Found potential usage/mention for '{brand_name}' on {platform}: {item.get('url')}")
-                             break # Found evidence
-                    if platform_status == "potentially_available_low_presence":
-                         logger.info(f"No direct profile/strong mentions found for '{brand_name}' on {platform} in top results.")
-
-                else:
-                     logger.info(f"No results found for '{brand_name}' on {platform}.")
-
-            except Exception as e:
-                logger.error(f"Error checking {platform} for '{brand_name}': {e}")
+            # Check for API call errors
+            if isinstance(search_api_results, dict) and search_api_results.get('error'):
+                error_msg = f"API Error for {platform}: {search_api_results['error']}"
+                logger.error(error_msg)
                 platform_status = "check_error"
+                overall_error = overall_error or error_msg # Store first error
+            else:
+                # Process successful results
+                try:
+                    brand_lower = brand_name.lower()
+                    found_mention = False
+                    if isinstance(search_api_results, dict) and search_api_results.get('web') and search_api_results['web'].get('results'):
+                        for item in search_api_results['web']['results']:
+                            item_title = item.get('title', '').lower()
+                            item_url = item.get('url', '').lower()
+                            if brand_lower in item_title or f"/{brand_lower}" in item_url:
+                                platform_status = "used_mentioned"
+                                found_mention = True
+                                logger.info(f"Found potential usage/mention for '{brand_name}' on {platform}: {item.get('url')}")
+                                break
+                    if not found_mention:
+                        logger.info(f"No direct profile/strong mentions found for '{brand_name}' on {platform} in top results.")
+                except Exception as e:
+                    error_msg = f"Exception processing results for {platform}: {str(e)}"
+                    logger.error(error_msg)
+                    platform_status = "check_error"
+                    overall_error = overall_error or error_msg
 
             results['platform_results'][platform] = platform_status
 
+        results['error'] = overall_error # Set overall error if any platform failed
         logger.info(f"Completed social media presence check for: {brand_name}")
         return results
 
     def check_trademarks(self, brand_name: str, country_code: str = 'US') -> dict:
         """
-        Performs a basic trademark check by searching the official database website.
-        WARNING: This is NOT a comprehensive trademark search. It only checks for
-        indexed exact matches on the target website using general web search.
-
-        Args:
-            brand_name: The brand name to check.
-            country_code: The country code for the trademark database (e.g., 'US'). Currently only supports 'US'.
-
-        Returns:
-            A dictionary summarizing trademark findings.
-            Example structure: {'status': 'potential_conflict_found_on_site' | 'no_exact_match_found_on_site' | 'check_error' | 'unsupported_country',
-                              'details': [...], 'database_checked': 'USPTO (via web search)'}
+        Performs a basic trademark check using Brave web search.
         """
         logger.info(f"Starting basic trademark check for: {brand_name} in country: {country_code}")
         results = {
-            'status': 'check_error', # Default status
+            'status': 'check_error',
             'details': [],
             'database_checked': f'{country_code} (Unsupported)',
             'query_used': None,
             'error': None
         }
-
-        # --- Target specific databases based on country code ---
         target_site = None
         if country_code == 'US':
-            # USPTO's TESS search system (use the public search site)
-            target_site = "tess2.uspto.gov" # Or tmsearch.uspto.gov if more stable/indexable
+            target_site = "tess2.uspto.gov"
             results['database_checked'] = 'USPTO TESS (via web search)'
-        # TODO: Add targets for other countries (e.g., EUIPO, WIPO) if needed
-        # elif country_code == 'EU':
-        #     target_site = "euipo.europa.eu"
-        #     results['database_checked'] = 'EUIPO (via web search)'
+        # TODO: Add other countries
 
         if not target_site:
-            logger.warning(f"Trademark check for country code '{country_code}' is not supported.")
             results['status'] = 'unsupported_country'
-            results['error'] = f"Country code '{country_code}' not supported for trademark check."
+            results['error'] = f"Country code '{country_code}' not supported."
             return results
 
-        # Construct the search query
-        # Use quotes for exact match
         query = f'site:{target_site} "{brand_name}"'
         results['query_used'] = query
         logger.info(f"Using trademark check query: {query}")
 
+        # --- Add delay to avoid rate limiting ---
+        time.sleep(0.8) # Pause for 0.8 seconds before the API call
+        # ----------------------------------------
+
+        # Make API Call
+        search_api_results = self._make_brave_request(query=query, count=2)
+
+        # Check API errors
+        if isinstance(search_api_results, dict) and search_api_results.get('error'):
+            results['error'] = f"API Error: {search_api_results['error']}"
+            results['status'] = 'check_error'
+            results['details'] = [f"Failed to query {target_site} via API."]
+            logger.error(results['error'])
+            return results
+
+        # Process results
         try:
-            # ***** TOOL CALL SIMULATION FOR LOCAL TESTING *****
-            # Simulate calling Brave Search for the trademark site query
-            # search_api_results = mcp_Brave_Search_brave_web_search(query=query, count=2) # Check top few results
-
-            # Simulate finding a result for "InnovateNow"
-            if "innovatenow" in brand_name.lower():
-                 simulated_tm_results = {
-                      "web": { "results": [{"title": f"TESS Record for INNOVATENOW", "url": f"https://{target_site}/showfield?sn=12345", "description": "..."}] }
-                 }
-            else: # Simulate no results for others
-                 simulated_tm_results = {"web": {"results": []}}
-
-            logger.info(f"Using SIMULATED search results for trademark check on {target_site}.")
-            search_api_results = simulated_tm_results
-            # *****************************************************
-
-            # Process results
             found_hits = []
-            if search_api_results and search_api_results.get('web') and search_api_results['web'].get('results'):
+            if isinstance(search_api_results, dict) and search_api_results.get('web') and search_api_results['web'].get('results'):
                  found_hits = search_api_results['web']['results']
                  logger.info(f"Found {len(found_hits)} potential exact match(es) for '{brand_name}' on {target_site}.")
             else:
@@ -293,24 +268,25 @@ class MarketResearchAgent:
             if found_hits:
                  results['status'] = 'potential_conflict_found_on_site'
                  results['details'] = [
-                     f"Found {len(found_hits)} result(s) potentially related to '{brand_name}' via web search on {target_site}.",
-                     "This suggests a potential conflict exists. Further investigation via official database is required.",
-                     f"Example Hit: {found_hits[0].get('title')} ({found_hits[0].get('url')})" # Add first hit details
+                     f"Found {len(found_hits)} result(s) potentially related...",
+                     "Further investigation required.",
+                     f"Example Hit: {found_hits[0].get('title')} ({found_hits[0].get('url')})"
                  ]
             else:
                  results['status'] = 'no_exact_match_found_on_site'
                  results['details'] = [
-                     f"No exact match for '{brand_name}' found via web search on {target_site}.",
-                     "NOTE: This does NOT confirm availability. Similar marks or non-indexed marks may exist."
+                     f"No exact match for '{brand_name}' found via web search...",
+                     "NOTE: This does NOT confirm availability..."
                  ]
+            results['error'] = None # Clear error on success
 
         except Exception as e:
-            logger.exception(f"Error during trademark web search check for '{brand_name}': {e}")
+            logger.exception(f"Error processing trademark search results for '{brand_name}': {e}")
             results['status'] = 'check_error'
-            results['details'] = [f"An exception occurred during the check: {str(e)}"]
-            results['error'] = f"An exception occurred during trademark check: {str(e)}"
+            results['details'] = [f"Exception processing results: {str(e)}"]
+            results['error'] = f"Exception processing results: {str(e)}"
 
-        logger.info(f"Completed basic trademark check for: {brand_name}. Status: {results['status']}")
+        logger.info(f"Completed basic trademark check processing for: {brand_name}. Status: {results['status']}")
         return results
 
     def check_domain_availability(self, brand_name: str, tlds: list[str] = None) -> dict:
@@ -332,23 +308,25 @@ class MarketResearchAgent:
         base_domain = "".join(c for c in brand_name if c.isalnum()).lower()
         if not base_domain:
             logger.error(f"Could not generate a valid base domain from brand name: {brand_name}")
-            return {"error": "Invalid base domain generated"}
+            return {"error": "Invalid base domain generated", "results": {}}
 
         logger.info(f"Starting domain availability check for base: {base_domain}, TLDs: {tlds}")
-        results = {}
+        domain_statuses = {}
+        overall_error = None
 
         if whois is None:
              logger.warning("Skipping domain checks because python-whois library is not installed.")
+             overall_error = "Skipped (python-whois library missing)"
              for tld in tlds:
                  domain_name = base_domain + tld
-                 results[domain_name] = 'skipped (library missing)'
-             return results
+                 domain_statuses[domain_name] = 'skipped (library missing)'
+             return {"error": overall_error, "results": domain_statuses}
 
         for tld in tlds:
             domain_name = base_domain + tld
-            status = 'check_error' # Default to error
+            status = 'check_error'
             try:
-                time.sleep(0.5) # Small delay
+                time.sleep(0.5)
                 logger.debug(f"Checking WHOIS for: {domain_name}")
                 w = whois.whois(domain_name)
 
@@ -365,14 +343,17 @@ class MarketResearchAgent:
             except ConnectionError as e:
                  logger.error(f"Connection error checking domain {domain_name}: {e}")
                  status = 'check_error (connection)'
+                 overall_error = overall_error or "Connection error during domain check"
             except Exception as e:
                 logger.error(f"Error checking domain {domain_name}: {type(e).__name__} - {e}")
                 status = 'check_error'
+                overall_error = overall_error or "Exception during domain check"
 
-            results[domain_name] = status
+            domain_statuses[domain_name] = status
 
         logger.info("Completed domain availability check.")
-        return results
+        # Return a dict containing results and any overall error message
+        return {"error": overall_error, "results": domain_statuses}
 
     def research(self, brand_name: str) -> dict:
         """
@@ -383,12 +364,11 @@ class MarketResearchAgent:
              logger.error("Invalid brand name provided for research.")
              return {"error": "Invalid brand name provided."}
 
-        # Run individual checks
+        # Run individual checks using the updated methods
         web_results = self.search_web(brand_name)
         social_media_results = self.search_social_media(brand_name)
         trademark_results = self.check_trademarks(brand_name)
-        # *** Add domain check ***
-        domain_results = self.check_domain_availability(brand_name)
+        domain_results_dict = self.check_domain_availability(brand_name)
 
         # Consolidate results
         consolidated_results = {
@@ -396,16 +376,19 @@ class MarketResearchAgent:
             'web_search': web_results,
             'social_media_search': social_media_results,
             'trademark_check': trademark_results,
-            'domain_availability': domain_results, # *** Add domain results ***
-            'error': web_results.get('error') or social_media_results.get('error') or domain_results.get('error') # Propagate errors
+            'domain_availability': domain_results_dict.get('results', {}),
+            # Consolidate errors from all steps
+            'error': web_results.get('error') or social_media_results.get('error') or trademark_results.get('error') or domain_results_dict.get('error')
         }
         logger.info(f"Completed research for: {brand_name}")
         return consolidated_results
 
 # Example Usage (for testing purposes)
 if __name__ == '__main__':
-    researcher = MarketResearchAgent()
-    test_name = "ExampleBrandName"
-    research_data = researcher.research(test_name)
-    import json
-    print(json.dumps(research_data, indent=2))
+    # This example usage will need to be updated for the new request/process flow
+    # researcher = MarketResearchAgent()
+    # test_name = "ExampleBrandName"
+    # research_data = researcher.research(test_name)
+    # import json
+    # print(json.dumps(research_data, indent=2))
+    print("MarketResearchAgent defined. Run orchestrator for testing.")
