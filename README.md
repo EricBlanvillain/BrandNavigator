@@ -103,25 +103,18 @@ pytest
 # 🤝 Contributing
 
 Contributions are welcome! Please follow these steps:
-
 Fork the repository.
-
 Create a new branch (git checkout -b feature/your-feature-name).
-
 Make your changes.
-
 Ensure tests pass (pytest).
-
 Commit your changes (git commit -m 'Add some feature').
-
 Push to the branch (git push origin feature/your-feature-name).
-
 Open a Pull Request.
 
-Please adhere to standard coding practices and provide clear commit messages.
+-> Please adhere to standard coding practices and provide clear commit messages.
 
-📜 License
+# 📜 License
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-📧 Contact
+# 📧 Contact
 [Your Name/Project Email] - [Link to project website or issue tracker]

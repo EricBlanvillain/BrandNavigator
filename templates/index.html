@@ -9,6 +9,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 
+    <!-- Add Marked.js for Markdown rendering -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
     <style>
         body {
             font-family: 'Inter', sans-serif;
@@ -279,12 +282,16 @@
                 loadingIndicator.style.display = 'none';
                 reportOutput.style.display = 'block';
 
-                if (response.ok && data.html) {
-                    reportOutput.innerHTML = `<h2 class="text-center mb-4">Analysis Report: ${escapeHTML(brandName)}</h2><div class="report-content">${data.html}</div>`;
+                if (response.ok && data.success && data.report_markdown) {
+                    // Use Marked.js to convert Markdown to HTML
+                    const reportHtml = marked.parse(data.report_markdown);
+                    reportOutput.innerHTML = `<h2 class="text-center mb-4">Analysis Report: ${escapeHTML(brandName)}</h2><div class="report-content">${reportHtml}</div>`;
                     qaSection.style.display = 'block'; // Show QA section on success
                 } else {
-                    const errorMessage = data.error || `Request failed with status ${response.status}.`;
-                    showError(`Analysis Error: ${errorMessage}`, reportOutput);
+                    // Use the structured error fields
+                    const errorTitle = data.error || `Request Failed (${response.status})`;
+                    const errorDetails = data.details || 'No further details available.';
+                    showError(`<strong>${escapeHTML(errorTitle)}:</strong> ${escapeHTML(errorDetails)}`, reportOutput);
                     qaSection.style.display = 'none'; // Hide QA on error
                 }
             } catch (error) {

@@ -69,6 +69,7 @@ media/ # Often user-uploaded files
 # Flask stuff:
 instance/
 .webassets-cache
+/flask_session/ # Ignore Flask session files
 
 # Scrapy stuff:
 .scrapy

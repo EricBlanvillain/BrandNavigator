@@ -1,0 +1,30 @@
+    # /Users/ericblanvillain/code/brand_navigator/pyproject.toml
+
+    [build-system]
+    requires = ["setuptools>=61.0"]
+    build-backend = "setuptools.build_meta"
+
+    [project]
+    # The project name can still be 'brand_navigator',
+    # but setuptools will now look for packages like 'agents', 'services', etc. directly inside this directory.
+    name = "brand_navigator"
+    version = "0.1.0"
+    requires-python = ">=3.9"
+    classifiers = [
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent",
+        "Framework :: Flask",
+    ]
+    # dependencies = [ # You could list dependencies from requirements.txt here too, optional
+    #     "Flask>=2.0",
+    #     "python-dotenv",
+    #     "Flask-Session",
+    #     # ... other deps ...
+    # ]
+
+    [tool.setuptools.packages.find]
+    # Look for packages (directories with __init__.py) directly within this folder (the new root)
+    where = ["."]
+    # Exclude the tests directory from being installed as a package
+    exclude = ["tests*"]
