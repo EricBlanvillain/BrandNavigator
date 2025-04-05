@@ -1,0 +1,40 @@
+# Core Web Framework (Choose one, e.g., Flask)
+Flask>=2.0
+python-dotenv>=0.20 # For loading .env files
+python-whois
+
+# API Interaction
+requests>=2.25
+
+# AI SDKs (Add specific ones you plan to use)
+openai>=1.0       # Example for OpenAI
+# anthropic       # Example for Anthropic/Claude
+# google-generativeai # Example for Google Gemini
+
+# Web Scraping / Parsing (For Market Research Agent)
+beautifulsoup4>=4.9
+# selenium          # Optional: If heavy JS rendering interaction is needed
+
+# Database (Choose based on your DB and framework)
+SQLAlchemy>=1.4     # Example ORM
+Flask-SQLAlchemy>=2.5 # Example Flask integration
+psycopg2-binary>=2.9 # Example for PostgreSQL driver
+# alembic>=1.7       # Example for DB migrations (often used with SQLAlchemy)
+# Flask-Migrate      # Example Flask integration for Alembic
+
+# Task Queues (Optional, for long-running AI tasks)
+# celery>=5.0
+# redis>=4.0
+
+# Testing
+pytest>=6.0
+
+# Linters/Formatters (Development only, optional to include here)
+# flake8
+# black
+
+# Add other specific libraries needed for agents, data processing, etc.
+# numpy
+# pandas
+# nltk             # For linguistic analysis if done locally
+# scikit-learn     # If building custom evaluation models

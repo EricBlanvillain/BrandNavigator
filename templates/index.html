@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>BrandNavigator AI - Instant Brand Name Analysis</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fc; /* Light background */
+            color: #333;
+        }
+        .navbar {
+            background-color: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .navbar-brand {
+            font-weight: 700;
+            color: #0d6efd !important; /* Primary blue */
+        }
+        .hero-section {
+            padding: 6rem 1.5rem 4rem; /* More top padding */
+            text-align: center;
+            /* Optional subtle background pattern */
+            /* background-image: radial-gradient(#e0e0e0 1px, transparent 1px); */
+            /* background-size: 20px 20px; */
+        }
+        .hero-section h1 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            color: #212529;
+        }
+        .hero-section .lead {
+            font-size: 1.25rem;
+            margin-bottom: 2.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            color: #555;
+        }
+        #analyze-form .form-control {
+            border-radius: 0.5rem 0 0 0.5rem;
+            padding: 0.9rem 1.2rem;
+            font-size: 1.1rem;
+            border-color: #ced4da;
+        }
+        #analyze-form .btn {
+            border-radius: 0 0.5rem 0.5rem 0;
+            padding: 0.9rem 1.5rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+         #analyze-form .input-group {
+            max-width: 650px;
+            margin: 2rem auto 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 0.5rem; /* Apply radius to group for shadow */
+         }
+
+        .results-section {
+            margin-top: 3rem;
+            padding: 2rem;
+            background-color: #ffffff; /* White background for results */
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            border: none;
+        }
+        .report-content h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #0d6efd;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid #eef;
+        }
+         .report-content h2:first-of-type {
+             margin-top: 0;
+         }
+        .report-content h3 {
+             margin-top: 1.2rem;
+             font-size: 1.15rem;
+             font-weight: 600;
+             color: #333;
+        }
+        .report-content ul {
+            list-style: none;
+            padding-left: 0;
+            margin-bottom: 1rem;
+        }
+        .report-content li {
+            margin-bottom: 0.5rem;
+            padding-left: 1.2em;
+            position: relative;
+        }
+        .report-content li::before {
+            content: "\2022"; /* Bullet */
+            color: #0d6efd;
+            font-weight: bold;
+            display: inline-block;
+            width: 1em;
+            margin-left: -1.2em;
+            position: absolute;
+            left: 0;
+        }
+        .report-content .alert {
+             margin-top: 1rem;
+        }
+
+        .how-it-works {
+            padding: 4rem 1rem;
+            background-color: #ffffff;
+            margin-top: 4rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        }
+        .how-it-works h2 {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            font-weight: 600;
+        }
+        .how-it-works .step {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+         .how-it-works .step strong {
+             display: block;
+             margin-bottom: 0.5rem;
+             color: #0d6efd;
+         }
+
+        .loading-spinner { width: 3rem; height: 3rem; }
+        .footer { background-color: transparent; text-align: center; padding: 2rem 0; margin-top: 3rem; color: #777; }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">🚀 BrandNavigator AI</a>
+            <!-- Potential Nav Links -->
+            <!-- <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="#how-it-works">How It Works</a>
+            </div> -->
+        </div>
+    </nav>
+
+    <!-- Hero Section with Integrated Form -->
+    <section class="hero-section">
+        <div class="container">
+            <h1>Is Your Brand Name Ready?</h1>
+            <p class="lead">
+                Get instant AI-powered analysis on web conflicts, domain/social availability, trademark checks (basic), and linguistic suitability.
+            </p>
+            <form id="analyze-form">
+                <div class="input-group mb-3">
+                    <input type="text" class="form-control form-control-lg" id="brand_name_input" name="brand_name" required placeholder="Enter brand name (e.g., ZyxoSphere)">
+                    <button type="submit" class="btn btn-primary btn-lg">Analyze Now</button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Results Area (Initially Hidden) -->
+    <div class="container">
+        <div id="results-area" style="display: none;">
+            <!-- Loading Spinner -->
+            <div id="loading-indicator" class="text-center py-5" style="display: none;">
+                <div class="spinner-border loading-spinner text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-3 text-muted">Analyzing with AI... this might take a few seconds.</p>
+            </div>
+            <!-- Report Content / Error Message -->
+            <div id="report-output" class="results-section"></div>
+
+            <!-- QA Section (Initially Hidden) -->
+            <div id="qa-section" class="mt-4" style="display: none;">
+                <hr>
+                <h3>Ask a Follow-up Question</h3>
+                <p class="text-muted"><small>Ask about the results presented above (e.g., "Which domains were available?", "Explain the linguistic analysis more.")</small></p>
+                <form id="qa-form">
+                    <div class="input-group mb-3">
+                        <input type="text" class="form-control" id="qa_question_input" name="question" required placeholder="Ask a question based on the report...">
+                        <button type="submit" class="btn btn-secondary">Ask AI</button>
+                    </div>
+                </form>
+                <!-- QA Loading Indicator -->
+                 <div id="qa-loading-indicator" class="text-center py-3" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+                <!-- QA Response Area -->
+                <div id="qa-response-area" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How It Works Section -->
+    <section id="how-it-works" class="how-it-works">
+        <div class="container">
+            <h2>What We Check For You</h2>
+            <div class="row">
+                <div class="col-md-3 step">
+                    <strong>🌐 Web Presence</strong>
+                    <p>Scans the web for existing uses and potential conflicts that might dilute your brand.</p>
+                </div>
+                <div class="col-md-3 step">
+                    <strong>📱 Social Media</strong>
+                    <p>Checks major platforms for profile/mention usage to gauge handle availability.</p>
+                </div>
+                <div class="col-md-3 step">
+                    <strong>🔑 Domain Availability</strong>
+                    <p>Performs live checks for your name across common domain extensions (.com, .ai, .io, etc.).</p>
+                </div>
+                 <div class="col-md-3 step">
+                    <strong>⚖️ AI Evaluation</strong>
+                    <p>GPT-4o assesses linguistics, memorability, availability issues, and gives an overall potential score.</p>
+                </div>
+            </div>
+             <p class="text-center mt-3"><small class="text-muted"><em>Note: Web/social/trademark checks are preliminary. Domain checks are live.</em></small></p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2024 BrandNavigator AI</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const analyzeForm = document.getElementById('analyze-form');
+        const resultsArea = document.getElementById('results-area');
+        const loadingIndicator = document.getElementById('loading-indicator');
+        const reportOutput = document.getElementById('report-output');
+        const brandNameInput = document.getElementById('brand_name_input');
+
+        // QA Elements
+        const qaSection = document.getElementById('qa-section');
+        const qaForm = document.getElementById('qa-form');
+        const qaQuestionInput = document.getElementById('qa_question_input');
+        const qaLoadingIndicator = document.getElementById('qa-loading-indicator');
+        const qaResponseArea = document.getElementById('qa-response-area');
+
+        // Analyze Form Submission
+        analyzeForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const brandName = brandNameInput.value.trim();
+            if (!brandName) {
+                showError('Please enter a brand name.', reportOutput);
+                qaSection.style.display = 'none'; // Hide QA on error
+                resultsArea.style.display = 'block';
+                return;
+            }
+
+            // Show loading state
+            resultsArea.style.display = 'block';
+            reportOutput.style.display = 'none';
+            loadingIndicator.style.display = 'block';
+            qaSection.style.display = 'none'; // Hide QA during analysis
+            qaResponseArea.innerHTML = ''; // Clear previous QA responses
+
+            try {
+                const formData = new FormData(analyzeForm);
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    body: formData
+                });
+                const data = await response.json();
+
+                loadingIndicator.style.display = 'none';
+                reportOutput.style.display = 'block';
+
+                if (response.ok && data.html) {
+                    reportOutput.innerHTML = `<h2 class="text-center mb-4">Analysis Report: ${escapeHTML(brandName)}</h2><div class="report-content">${data.html}</div>`;
+                    qaSection.style.display = 'block'; // Show QA section on success
+                } else {
+                    const errorMessage = data.error || `Request failed with status ${response.status}.`;
+                    showError(`Analysis Error: ${errorMessage}`, reportOutput);
+                    qaSection.style.display = 'none'; // Hide QA on error
+                }
+            } catch (error) {
+                console.error('Analyze fetch error:', error);
+                loadingIndicator.style.display = 'none';
+                showError('Could not connect to the analysis service. Please try again later.', reportOutput);
+                qaSection.style.display = 'none'; // Hide QA on error
+            }
+        });
+
+        // QA Form Submission
+        qaForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const question = qaQuestionInput.value.trim();
+            if (!question) {
+                appendQaResponse('<div class="alert alert-sm alert-warning">Please enter a question.</div>');
+                return;
+            }
+
+            qaLoadingIndicator.style.display = 'block'; // Show QA loading
+            qaForm.elements['question'].disabled = true; // Disable input while loading
+            qaForm.elements[1].disabled = true; // Disable button while loading
+
+            try {
+                 const body = new URLSearchParams();
+                 body.append('question', question);
+                 const response = await fetch('/qa', {
+                    method: 'POST',
+                    headers: {
+                        // Optional: Explicitly set header, though fetch often does this with URLSearchParams
+                        // 'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: body // Pass the URLSearchParams object
+                 });
+                 const data = await response.json();
+
+                 if (response.ok && data.answer) {
+                     appendQaResponse(`
+                        <div class="card bg-light mb-3">
+                            <div class="card-body">
+                                <p class="card-text text-muted small"><strong>You asked:</strong> ${escapeHTML(question)}</p>
+                                <p class="card-text"><strong>AI Answer:</strong> ${escapeHTML(data.answer)}</p>
+                            </div>
+                        </div>
+                     `);
+                 } else {
+                     const errorMessage = data.error || `Request failed with status ${response.status}.`;
+                     appendQaResponse(`<div class="alert alert-sm alert-danger"><strong>Error asking question:</strong> ${escapeHTML(errorMessage)}</div>`);
+                 }
+
+            } catch (error) {
+                console.error('QA fetch error:', error);
+                appendQaResponse('<div class="alert alert-sm alert-danger"><strong>Error:</strong> Could not connect to the QA service.</div>');
+            } finally {
+                qaLoadingIndicator.style.display = 'none'; // Hide QA loading
+                qaForm.elements['question'].disabled = false; // Re-enable input
+                qaForm.elements[1].disabled = false; // Re-enable button
+                qaQuestionInput.value = ''; // Clear input field
+            }
+        });
+
+        // Helper to display error messages
+        function showError(message, element) {
+            element.innerHTML = `<div class="alert alert-danger">${escapeHTML(message)}</div>`;
+            element.style.display = 'block';
+        }
+
+        // Helper to append QA responses
+        function appendQaResponse(htmlContent) {
+             // Add new response to the top for visibility
+             qaResponseArea.insertAdjacentHTML('afterbegin', htmlContent);
+        }
+
+        // Helper function to prevent basic XSS
+        function escapeHTML(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
