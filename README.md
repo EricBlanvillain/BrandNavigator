@@ -115,6 +115,3 @@ Open a Pull Request.
 
 # 📜 License
 This project is licensed under the MIT License - see the LICENSE file for details.
-
-# 📧 Contact
-[Your Name/Project Email] - [Link to project website or issue tracker]
